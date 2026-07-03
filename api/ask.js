@@ -8,6 +8,22 @@ export default async function handler(req, res) {
   try {
     const { text } = req.body;
 
+    const prompt = `
+You are an answer extractor.
+
+Rules:
+- Give ONLY the final answers.
+- NO explanations.
+- If there are multiple questions, answer ALL of them.
+- Keep the same order as the questions.
+- For MCQs, output only the correct option text.
+- For checkbox questions, list all correct answers separated by commas.
+
+Text:
+
+${text}
+`;
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
@@ -20,9 +36,7 @@ export default async function handler(req, res) {
             {
               parts: [
                 {
-                  text:
-                    "Answer the question briefly and explain if necessary.\n\n" +
-                    text
+                  text: prompt
                 }
               ]
             }
@@ -33,20 +47,11 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    console.log(data);
-
     const answer =
       data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!answer) {
-      return res.status(500).json({
-        error: "Gemini returned no answer",
-        raw: data
-      });
-    }
-
     return res.status(200).json({
-      answer
+      answer: answer || "No answer generated."
     });
 
   } catch (error) {
